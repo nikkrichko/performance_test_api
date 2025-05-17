@@ -1,7 +1,7 @@
 
 
-from flask import Flask, render_template, request, jsonify,json
-from flask_restful import Resource, Api,reqparse
+from flask import Flask, render_template, request, jsonify
+from flask_restful import Resource, Api
 from flask import Response
 from datetime import datetime
 import time
@@ -43,19 +43,20 @@ class Hello(Resource):
 
 class InputAPI(Resource):
     def post(self):
-        content_type = request.form.get('Content-Type')
-        request_result=request.form
-        if (content_type == 'application/json'):
-            input_value_1 = request_result.get('input_field_1')
-            input_value_2 = request_result.get('input_field_2')
-            input_language = request_result.get('language')
-            # Do something with input_value
-            # return jsonify({'status': 'success', 'input': '{}'.format(json_data)})
-            # json_data = request.get_json(force=True)
-            # print(json_data)
-            return {'status': 'success', 'input': '{} {} {}'.format(input_value_1, input_value_2,input_language)}
+        if request.is_json:
+            json_data = request.get_json(force=True)
+            input_value_1 = json_data.get('input_field_1')
+            input_value_2 = json_data.get('input_field_2')
+            input_language = json_data.get('language')
+            return {
+                'status': 'success',
+                'input': f'{input_value_1} {input_value_2} {input_language}'
+            }
         else:
-            return 'Content-Type not supported!'
+            return {
+                'status': 'error',
+                'message': 'Content-Type not supported!'
+            }, 400
 
 
 
@@ -84,10 +85,13 @@ def track_time_spent(name):
 class Perf_api_version(Resource):
     @track_time_spent("version")
     def get(self):
-        response_msg = '{"version": "0.1", "deployed": '+datetime.today().strftime('%Y-%m-%d')+'}'
-        sleeping_time = random.randint(1, 150)/1000
+        response = {
+            "version": "0.1",
+            "deployed": datetime.today().strftime('%Y-%m-%d')
+        }
+        sleeping_time = random.randint(1, 150) / 1000
         time.sleep(sleeping_time)
-        return Response(response_msg, status=200, mimetype='application/json')
+        return jsonify(response), 200
 
 
 class Perf_api_log(Resource):
@@ -96,9 +100,9 @@ class Perf_api_log(Resource):
         size = COUNTER.value
         if size >= 15:
             return Response("Service unavailable", status=500, mimetype='application/json')
-        response_msg = ".".join(get_paragraphs(size)).replace("'","").replace("..",". ")
-        slleping_time = random.randint(900,1100) / 1000
-        time.sleep(slleping_time)
+        response_msg = ".".join(get_paragraphs(size)).replace("'", "").replace("..", ". ")
+        sleeping_time = random.randint(900, 1100) / 1000
+        time.sleep(sleeping_time)
         return Response(response_msg, status=200, mimetype='application/json')
 
 class Perf_api_sysinfo(Resource):
@@ -106,24 +110,21 @@ class Perf_api_sysinfo(Resource):
     def get(self):
         sleep_time = get_sleeping_time()
         time.sleep(sleep_time)
-        response_msg = '{"platform":' + platform.machine() + ', "version": ' + platform.version() + ', "system": ' + platform.system() + '}'
-        return Response(response_msg, status=200, mimetype='application/json')
+        response = {
+            "platform": platform.machine(),
+            "version": platform.version(),
+            "system": platform.system(),
+        }
+        return jsonify(response), 200
 
 class Perf_api_checkuser(Resource):
     @track_time_spent("check_user")
     def post(self):
-        # content_type = request.form.get('Content-Type')
-        # request_result = request.form
-        # # print(request_result)
-        user_name = request.form["user"]
-        # print(user_name)
+        user_name = request.form.get("user")
         if user_name == "nik":
-            response_msg = '{"auth": "pass", "user": ' + user_name + ' }'
             time.sleep(0.5)
-            return Response(response_msg, status=200, mimetype='application/json')
-        else:
-            response_msg = '{"auth": "FAILED"}'
-            return Response(response_msg, status=500, mimetype='application/json')
+            return jsonify({"auth": "pass", "user": user_name}), 200
+        return jsonify({"auth": "FAILED"}), 500
 
 
 
